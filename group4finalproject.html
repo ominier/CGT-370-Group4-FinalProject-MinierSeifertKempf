@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Evolution of the Tour de France</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --blue: #0b4f9c;
+      --blue-dark: #07386e;
+      --yellow: #ffd438;
+      --pink: #ff4f93;
+      --red: #d64242;
+      --ink: #1d2733;
+      --muted: #65758b;
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --line: #dbe3ee;
+      --flat: #6b8fd6;
+      --mountain: #d64242;
+      --hilly: #ff9f1c;
+      --trial: #7b61ff;
+      --other: #9aa7b5;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+
+    header.hero {
+      min-height: 92vh;
+      display: grid;
+      place-items: center;
+      padding: 70px 24px;
+      background:
+        linear-gradient(rgba(7,56,110,.82), rgba(7,56,110,.92)),
+        radial-gradient(circle at 20% 20%, rgba(255,212,56,.35), transparent 25%),
+        linear-gradient(135deg, #0b4f9c, #07386e);
+      color: white;
+      text-align: center;
+    }
+
+    .hero-inner { max-width: 980px; }
+    .kicker {
+      display: inline-block;
+      color: var(--yellow);
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 5.6rem);
+      line-height: 1.02;
+      margin: 0 0 18px;
+    }
+
+    h2 {
+      font-size: clamp(1.7rem, 3vw, 2.8rem);
+      line-height: 1.1;
+      margin: 0 0 14px;
+    }
+
+    h3 { margin: 0 0 8px; font-size: 1.2rem; }
+    p { margin: 0 0 16px; }
+    .subtitle {
+      font-size: clamp(1.05rem, 2vw, 1.35rem);
+      max-width: 760px;
+      margin: 0 auto 28px;
+      color: #eaf1fb;
+    }
+
+    .button {
+      display: inline-block;
+      background: var(--yellow);
+      color: var(--ink);
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 24px;
+      font-weight: 800;
+      text-decoration: none;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+      cursor: pointer;
+    }
+
+    .scroll-note { margin-top: 28px; opacity: .85; font-size: .95rem; }
+
+    main { width: 100%; }
+    section { padding: 70px 24px; }
+    .container { max-width: 1180px; margin: 0 auto; }
+
+    .section-heading {
+      max-width: 850px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+    .section-heading p { color: var(--muted); font-size: 1.05rem; }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 360px) 1fr;
+      gap: 28px;
+      align-items: stretch;
+      margin: 34px 0 56px;
+    }
+
+    .story-copy, .chart-card, .control-card, .insight-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 12px 28px rgba(29,39,51,.07);
+    }
+
+    .story-copy { padding: 28px; position: relative; overflow: hidden; }
+    .story-copy::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 7px;
+      background: var(--yellow);
+    }
+
+    .question {
+      color: var(--blue);
+      font-size: .95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 10px;
+    }
+
+    .takeaway {
+      background: #fff7c7;
+      border-left: 5px solid var(--yellow);
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      margin-top: 18px;
+    }
+
+    .chart-card { padding: 22px; min-height: 360px; }
+    .chart-title-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .chart-title-row p { color: var(--muted); font-size: .92rem; margin: 0; }
+
+    svg { width: 100%; height: auto; overflow: visible; }
+    .axis text { fill: var(--muted); font-size: 11px; }
+    .axis path, .axis line { stroke: #cbd5e1; }
+    .grid line { stroke: #e7edf5; }
+    .grid path { stroke: none; }
+
+    .annotation {
+      fill: #fff7c7;
+      stroke: var(--yellow);
+      stroke-width: 1.2;
+    }
+    .annotation-text {
+      font-size: 12px;
+      fill: var(--ink);
+      font-weight: 700;
+    }
+
+    .photo-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin: 24px 0 56px;
+    }
+
+    .photo-card {
+      min-height: 170px;
+      border-radius: 20px;
+      padding: 18px;
+      color: white;
+      display: flex;
+      align-items: end;
+      background:
+        linear-gradient(rgba(7,56,110,.16), rgba(7,56,110,.9)),
+        repeating-linear-gradient(135deg, #0b4f9c, #0b4f9c 14px, #07386e 14px, #07386e 28px);
+      box-shadow: 0 12px 28px rgba(29,39,51,.12);
+    }
+    .photo-card:nth-child(2) {
+      background:
+        linear-gradient(rgba(7,56,110,.10), rgba(7,56,110,.88)),
+        radial-gradient(circle at 65% 25%, var(--yellow), transparent 25%),
+        linear-gradient(135deg, #214e7a, #0b4f9c);
+    }
+    .photo-card:nth-child(3) {
+      background:
+        linear-gradient(rgba(7,56,110,.15), rgba(7,56,110,.9)),
+        radial-gradient(circle at 15% 25%, var(--pink), transparent 23%),
+        linear-gradient(135deg, #07386e, #0b4f9c);
+    }
+    .photo-card strong { display: block; color: var(--yellow); }
+
+    .dashboard {
+      background: #eef3f9;
+      border-top: 1px solid var(--line);
+    }
+
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .control-card {
+      padding: 22px;
+      position: sticky;
+      top: 18px;
+    }
+
+    label {
+      display: block;
+      font-weight: 800;
+      margin: 14px 0 7px;
+      font-size: .9rem;
+    }
+    select, input[type="range"], button {
+      width: 100%;
+      font: inherit;
+    }
+    select, input[type="text"] {
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: white;
+      color: var(--ink);
+    }
+    input[type="range"] { accent-color: var(--blue); }
+    .reset-btn {
+      margin-top: 18px;
+      background: var(--blue);
+      color: white;
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 22px;
+    }
+
+    .wide { grid-column: 1 / -1; }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .metric {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(29,39,51,.05);
+    }
+    .metric small { color: var(--muted); font-weight: 800; text-transform: uppercase; font-size: .72rem; }
+    .metric b { display: block; font-size: 1.7rem; margin-top: 4px; color: var(--blue); }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: .85rem;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+    .tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: rgba(29,39,51,.95);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: .85rem;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      opacity: 0;
+      transform: translate(-50%, -115%);
+      max-width: 280px;
+      z-index: 50;
+    }
+
+    .note {
+      font-size: .9rem;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+
+    footer {
+      padding: 34px 24px;
+      text-align: center;
+      color: var(--muted);
+      background: white;
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 900px) {
+      .story-grid, .dashboard-layout { grid-template-columns: 1fr; }
+      .control-card { position: relative; top: auto; }
+      .photo-strip, .metric-row { grid-template-columns: 1fr; }
+      .dash-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <span class="kicker">CGT 370 Final Project</span>
+      <h1>The Evolution of the Tour de France</h1>
+      <p class="subtitle">A hybrid data story and exploration tool showing how the race, riders, and strategies have changed over time.</p>
+      <a class="button" href="#story">Start Exploring</a>
+      <div class="scroll-note">Scroll to follow the story, then use the dashboard to explore the data yourself ↓</div>
+    </div>
+  </header>
+
+  <main>
+    <section id="story">
+      <div class="container">
+        <div class="section-heading">
+          <h2>Three takeaways before exploring</h2>
+          <p>This opening section guides users through the main patterns first. The dashboard below then lets users filter, compare, and investigate the data on their own.</p>
+        </div>
+
+        <div class="photo-strip" aria-label="Historical evolution visual cards">
+          <div class="photo-card"><p><strong>Early Tours</strong> Long, difficult routes with fewer stages and lower completion rates.</p></div>
+          <div class="photo-card"><p><strong>Modern Race Structure</strong> The race becomes more standardized while strategy becomes more specialized.</p></div>
+          <div class="photo-card"><p><strong>Global Winners</strong> Winning nations and riders show clear periods of dominance.</p></div>
+        </div>
+
+        <div class="story-grid">
+          <article class="story-copy">
+            <div class="question">Guiding question 1</div>
+            <h2>How did the race itself change?</h2>
+            <p>The Tour de France has not stayed the same. The overall distance, number of stages, and completion rate show how the race evolved from a survival-style endurance event into a more structured modern competition.</p>
+            <div class="takeaway" id="takeaway-distance">Loading key takeaway...</div>
+          </article>
+          <div class="chart-card">
+            <div class="chart-title-row">
+              <div>
+                <h3>Distance and stages over time</h3>
+                <p>Annotated line chart with distance and stage count</p>
+              </div>
+            </div>
+            <div id="storyDistanceChart"></div>
+          </div>
+        </div>
+
+        <div class="story-grid">
+          <article class="story-copy">
+            <div class="question">Guiding question 2</div>
+            <h2>Do a few riders dominate the race?</h2>
+            <p>Rather than treating every winner equally, this view focuses on repeat winners. This helps reveal eras of rider dominance and gives users a clearer story before they enter the full dashboard.</p>
+            <div class="takeaway" id="takeaway-riders">Loading key takeaway...</div>
+          </article>
+          <div class="chart-card">
+            <div class="chart-title-row">
+              <div>
+                <h3>Repeat winners</h3>
+                <p>Hover for nationality and average winning age</p>
+              </div>
+            </div>
+            <div id="storyRepeatChart"></div>
+          </div>
+        </div>
+
+        <div class="story-grid">
+          <article class="story-copy">
+            <div class="question">Guiding question 3</div>
+            <h2>What kinds of stages shape the race?</h2>
+            <p>Stage type gives users more context than just distance. Grouping stages into flat, mountain, hilly, and time trial categories makes the race structure easier to understand and compare.</p>
+            <div class="takeaway" id="takeaway-stages">Loading key takeaway...</div>
+          </article>
+          <div class="chart-card">
+            <div class="chart-title-row">
+              <div>
+                <h3>Stage type breakdown by decade</h3>
+                <p>Stacked bars show how race composition changes by era</p>
+              </div>
+            </div>
+            <div id="storyStageChart"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard" id="dashboard">
+      <div class="container">
+        <div class="section-heading">
+          <h2>Explore Historical Tour Data</h2>
+          <p>Use the filters to explore specific years, stage types, riders, and countries. Hover over marks for details. Click a rider or country chart to filter related views.</p>
+        </div>
+
+        <div class="dashboard-layout">
+          <aside class="control-card">
+            <h3>Filters</h3>
+            <label for="startYear">Start year: <span id="startYearLabel"></span></label>
+            <input id="startYear" type="range" />
+
+            <label for="endYear">End year: <span id="endYearLabel"></span></label>
+            <input id="endYear" type="range" />
+
+            <label for="stageTypeFilter">Stage type</label>
+            <select id="stageTypeFilter">
+              <option value="All">All stage types</option>
+            </select>
+
+            <label for="riderFilter">Overall winner</label>
+            <select id="riderFilter">
+              <option value="All">All riders</option>
+            </select>
+
+            <label for="countryFilter">Winner country</label>
+            <select id="countryFilter">
+              <option value="All">All countries</option>
+            </select>
+
+            <button class="reset-btn" id="resetBtn">Reset filters</button>
+            <p class="note">Tip: the visualizations are linked. Filtering the dashboard updates the charts below.</p>
+          </aside>
+
+          <div>
+            <div class="metric-row">
+              <div class="metric"><small>Years shown</small><b id="metricYears">—</b></div>
+              <div class="metric"><small>Avg distance</small><b id="metricDistance">—</b></div>
+              <div class="metric"><small>Avg finish rate</small><b id="metricFinish">—</b></div>
+              <div class="metric"><small>Top country</small><b id="metricCountry">—</b></div>
+            </div>
+
+            <div class="dash-grid">
+              <div class="chart-card wide">
+                <div class="chart-title-row">
+                  <div>
+                    <h3>Race evolution</h3>
+                    <p>Distance and number of stages over time</p>
+                  </div>
+                </div>
+                <div id="dashEvolutionChart"></div>
+              </div>
+
+              <div class="chart-card">
+                <div class="chart-title-row">
+                  <div>
+                    <h3>Repeat winners</h3>
+                    <p>Click a rider to filter the dashboard</p>
+                  </div>
+                </div>
+                <div id="dashRepeatChart"></div>
+              </div>
+
+              <div class="chart-card">
+                <div class="chart-title-row">
+                  <div>
+                    <h3>Winner age pattern</h3>
+                    <p>Each point is a rider; x = average winning age</p>
+                  </div>
+                </div>
+                <div id="dashAgeChart"></div>
+              </div>
+
+              <div class="chart-card wide">
+                <div class="chart-title-row">
+                  <div>
+                    <h3>Do more stages impact finish rate?</h3>
+                    <p>Hover to see year, stages, starters, finishers, and completion percentage</p>
+                  </div>
+                </div>
+                <div id="dashStageImpactChart"></div>
+              </div>
+
+              <div class="chart-card wide">
+                <div class="chart-title-row">
+                  <div>
+                    <h3>Wins by nation</h3>
+                    <p>Bar chart used instead of a map to keep the layout readable and avoid confusing legends</p>
+                  </div>
+                </div>
+                <div id="dashCountryChart"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Tour de France Historical Data Project · Hybrid data story + analytics dashboard
+  </footer>
+
+  <div class="tooltip" id="tooltip"></div>
+
+<script>
+const fmt = d3.format(",");
+const pct = d3.format(".1f");
+const km = d3.format(",.0f");
+const colors = {
+  Flat: getComputedStyle(document.documentElement).getPropertyValue("--flat").trim(),
+  Mountain: getComputedStyle(document.documentElement).getPropertyValue("--mountain").trim(),
+  Hilly: getComputedStyle(document.documentElement).getPropertyValue("--hilly").trim(),
+  "Time Trial": getComputedStyle(document.documentElement).getPropertyValue("--trial").trim(),
+  Other: getComputedStyle(document.documentElement).getPropertyValue("--other").trim()
+};
+const tooltip = d3.select("#tooltip");
+
+function showTip(event, html) {
+  tooltip.html(html)
+    .style("left", event.clientX + "px")
+    .style("top", event.clientY + "px")
+    .style("opacity", 1);
+}
+function hideTip() { tooltip.style("opacity", 0); }
+function clearChart(selector) { d3.select(selector).selectAll("*").remove(); }
+
+function responsiveSvg(selector, height, margin) {
+  clearChart(selector);
+  const node = document.querySelector(selector);
+  const width = Math.max(320, node.clientWidth);
+  const svg = d3.select(selector).append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`);
+  return { svg, width, height, margin, innerW: width - margin.left - margin.right, innerH: height - margin.top - margin.bottom };
+}
+
+Promise.all([
+  d3.csv("tours_clean.csv", d3.autoType),
+  d3.csv("stages_clean.csv", d3.autoType),
+  d3.csv("winners_clean.csv", d3.autoType),
+  d3.csv("tour_winners_merged.csv", d3.autoType)
+]).then(([tours, stages, winners, tourWinners]) => {
+  tours = tours.filter(d => d.year && d.distance_km && d.stages_count);
+  stages = stages.filter(d => d.year && d.stage_type_group);
+  winners = winners.filter(d => d.year && d.rider);
+  tourWinners = tourWinners.filter(d => d.year && d.rider);
+
+  const minYear = d3.min(tours, d => d.year);
+  const maxYear = d3.max(tours, d => d.year);
+
+  setupControls(tours, stages, winners);
+  renderStory(tours, stages, winners);
+  updateDashboard();
+
+  window.addEventListener("resize", debounce(() => {
+    renderStory(tours, stages, winners);
+    updateDashboard();
+  }, 200));
+
+  function setupControls() {
+    const stageTypes = Array.from(new Set(stages.map(d => d.stage_type_group))).sort();
+    d3.select("#stageTypeFilter")
+      .selectAll("option.type")
+      .data(stageTypes)
+      .enter().append("option")
+      .attr("class", "type")
+      .attr("value", d => d)
+      .text(d => d);
+
+    const riderOptions = Array.from(new Set(winners.map(d => d.rider))).sort();
+    d3.select("#riderFilter")
+      .selectAll("option.rider")
+      .data(riderOptions)
+      .enter().append("option")
+      .attr("class", "rider")
+      .attr("value", d => d)
+      .text(d => d);
+
+    const countryOptions = Array.from(new Set(winners.map(d => d.country))).sort();
+    d3.select("#countryFilter")
+      .selectAll("option.country")
+      .data(countryOptions)
+      .enter().append("option")
+      .attr("class", "country")
+      .attr("value", d => d)
+      .text(d => d);
+
+    d3.select("#startYear").attr("min", minYear).attr("max", maxYear).attr("value", minYear).attr("step", 1);
+    d3.select("#endYear").attr("min", minYear).attr("max", maxYear).attr("value", maxYear).attr("step", 1);
+    d3.select("#startYearLabel").text(minYear);
+    d3.select("#endYearLabel").text(maxYear);
+
+    d3.selectAll("#startYear,#endYear,#stageTypeFilter,#riderFilter,#countryFilter")
+      .on("input change", updateDashboard);
+
+    d3.select("#resetBtn").on("click", () => {
+      d3.select("#startYear").property("value", minYear);
+      d3.select("#endYear").property("value", maxYear);
+      d3.select("#stageTypeFilter").property("value", "All");
+      d3.select("#riderFilter").property("value", "All");
+      d3.select("#countryFilter").property("value", "All");
+      updateDashboard();
+    });
+  }
+
+  function getFilters() {
+    let startYear = +d3.select("#startYear").property("value");
+    let endYear = +d3.select("#endYear").property("value");
+    if (startYear > endYear) [startYear, endYear] = [endYear, startYear];
+    d3.select("#startYearLabel").text(startYear);
+    d3.select("#endYearLabel").text(endYear);
+    return {
+      startYear,
+      endYear,
+      stageType: d3.select("#stageTypeFilter").property("value"),
+      rider: d3.select("#riderFilter").property("value"),
+      country: d3.select("#countryFilter").property("value")
+    };
+  }
+
+  function filteredData() {
+    const f = getFilters();
+    const yearSet = new Set(tourWinners
+      .filter(d => d.year >= f.startYear && d.year <= f.endYear)
+      .filter(d => f.rider === "All" || d.rider === f.rider)
+      .filter(d => f.country === "All" || d.country === f.country)
+      .map(d => d.year));
+
+    return {
+      f,
+      toursF: tours.filter(d => yearSet.has(d.year)),
+      winnersF: winners.filter(d => yearSet.has(d.year))
+        .filter(d => f.rider === "All" || d.rider === f.rider)
+        .filter(d => f.country === "All" || d.country === f.country),
+      stagesF: stages.filter(d => yearSet.has(d.year))
+        .filter(d => f.stageType === "All" || d.stage_type_group === f.stageType),
+      tourWinnersF: tourWinners.filter(d => yearSet.has(d.year))
+        .filter(d => f.rider === "All" || d.rider === f.rider)
+        .filter(d => f.country === "All" || d.country === f.country)
+    };
+  }
+
+  function renderStory(tours, stages, winners) {
+    renderEvolutionLine("#storyDistanceChart", tours, true);
+    renderRepeatWinners("#storyRepeatChart", winners, {story: true});
+    renderStageDecade("#storyStageChart", stages);
+
+    const first = tours[0], last = tours[tours.length - 1];
+    const distChange = ((last.distance_km - first.distance_km) / first.distance_km) * 100;
+    d3.select("#takeaway-distance").text(
+      `The race moved from ${km(first.distance_km)} km in ${first.year} to ${km(last.distance_km)} km in ${last.year}, a ${Math.abs(distChange).toFixed(0)}% ${distChange < 0 ? "decrease" : "increase"} in total distance.`
+    );
+
+    const repeat = d3.rollups(winners, v => v.length, d => d.rider).filter(d => d[1] > 1).sort((a,b) => d3.descending(a[1], b[1]));
+    d3.select("#takeaway-riders").text(
+      `${repeat.length} riders have won more than once, showing that the race has clear periods of repeat dominance.`
+    );
+
+    const typeCounts = d3.rollups(stages, v => v.length, d => d.stage_type_group).sort((a,b)=>d3.descending(a[1],b[1]));
+    d3.select("#takeaway-stages").text(
+      `${typeCounts[0][0]} stages appear most often in the dataset, but mountain and time trial stages provide important context for race strategy.`
+    );
+  }
+
+  function updateDashboard() {
+    const { toursF, winnersF, stagesF, tourWinnersF } = filteredData();
+    updateMetrics(toursF, winnersF);
+    renderEvolutionLine("#dashEvolutionChart", toursF, false);
+    renderRepeatWinners("#dashRepeatChart", winnersF, {clickable: true});
+    renderAgeScatter("#dashAgeChart", winnersF);
+    renderStageImpact("#dashStageImpactChart", toursF);
+    renderCountryBars("#dashCountryChart", winnersF);
+  }
+
+  function updateMetrics(toursF, winnersF) {
+    d3.select("#metricYears").text(toursF.length ? `${d3.min(toursF,d=>d.year)}–${d3.max(toursF,d=>d.year)}` : "—");
+    d3.select("#metricDistance").text(toursF.length ? `${km(d3.mean(toursF,d=>d.distance_km))} km` : "—");
+    d3.select("#metricFinish").text(toursF.length ? `${pct(d3.mean(toursF,d=>d.completion_pct))}%` : "—");
+    const topCountry = d3.rollups(winnersF, v => v.length, d => d.country).sort((a,b)=>d3.descending(a[1],b[1]))[0];
+    d3.select("#metricCountry").text(topCountry ? topCountry[0] : "—");
+  }
+
+  function renderEvolutionLine(selector, data, annotated) {
+    const margin = {top: 30, right: 60, bottom: 48, left: 62};
+    const {svg, width, height, innerW, innerH} = responsiveSvg(selector, annotated ? 410 : 390, margin);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    if (!data.length) return noData(g, innerW, innerH);
+
+    const x = d3.scaleLinear().domain(d3.extent(data, d => d.year)).range([0, innerW]);
+    const yDist = d3.scaleLinear().domain([0, d3.max(data, d => d.distance_km)]).nice().range([innerH, 0]);
+    const yStages = d3.scaleLinear().domain([0, d3.max(data, d => d.stages_count)]).nice().range([innerH, 0]);
+
+    g.append("g").attr("class","grid")
+      .call(d3.axisLeft(yDist).tickSize(-innerW).tickFormat(""));
+    g.append("g").attr("class","axis").attr("transform", `translate(0,${innerH})`)
+      .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+    g.append("g").attr("class","axis").call(d3.axisLeft(yDist));
+    g.append("g").attr("class","axis").attr("transform", `translate(${innerW},0)`).call(d3.axisRight(yStages));
+
+    svg.append("text").attr("x", margin.left).attr("y", 18).attr("fill", "#65758b").attr("font-size", 12).text("Distance (km)");
+    svg.append("text").attr("x", width - margin.right).attr("y", 18).attr("fill", "#65758b").attr("font-size", 12).attr("text-anchor","end").text("Stages");
+
+    const distLine = d3.line().x(d => x(d.year)).y(d => yDist(d.distance_km));
+    const stageLine = d3.line().x(d => x(d.year)).y(d => yStages(d.stages_count));
+
+    g.append("path").datum(data).attr("fill","none").attr("stroke", "var(--blue)").attr("stroke-width", 3).attr("d", distLine);
+    g.append("path").datum(data).attr("fill","none").attr("stroke", "var(--yellow)").attr("stroke-width", 3).attr("d", stageLine);
+
+    g.selectAll(".evo-point").data(data).enter().append("circle")
+      .attr("class","evo-point")
+      .attr("cx", d => x(d.year))
+      .attr("cy", d => yDist(d.distance_km))
+      .attr("r", 4)
+      .attr("fill", "var(--blue)")
+      .attr("opacity", .75)
+      .on("mousemove", (event,d) => showTip(event, `<b>${d.year}</b><br>Distance: ${km(d.distance_km)} km<br>Stages: ${d.stages_count}<br>Finish rate: ${pct(d.completion_pct)}%`))
+      .on("mouseleave", hideTip);
+
+    const legend = svg.append("g").attr("transform", `translate(${margin.left},${height - 12})`);
+    legend.append("circle").attr("r",5).attr("fill","var(--blue)");
+    legend.append("text").attr("x",10).attr("y",4).attr("font-size",12).text("Distance");
+    legend.append("circle").attr("cx",92).attr("r",5).attr("fill","var(--yellow)");
+    legend.append("text").attr("x",104).attr("y",4).attr("font-size",12).text("Stages");
+
+    if (annotated && data.length > 3) {
+      const latest = data[data.length - 1];
+      const earliest = data[0];
+      g.append("rect")
+        .attr("class","annotation")
+        .attr("x", Math.max(10, x(latest.year) - 205))
+        .attr("y", Math.max(10, yDist(latest.distance_km) - 76))
+        .attr("width", 190).attr("height", 54).attr("rx", 10);
+      g.append("text")
+        .attr("class","annotation-text")
+        .attr("x", Math.max(20, x(latest.year) - 193))
+        .attr("y", Math.max(28, yDist(latest.distance_km) - 52))
+        .text("Key insight: distance has")
+        .append("tspan").attr("x", Math.max(20, x(latest.year) - 193)).attr("dy", 16)
+        .text("changed across eras.");
+      g.append("line")
+        .attr("x1", Math.max(10, x(latest.year) - 15))
+        .attr("y1", Math.max(10, yDist(latest.distance_km) - 22))
+        .attr("x2", x(latest.year))
+        .attr("y2", yDist(latest.distance_km))
+        .attr("stroke", "var(--yellow)")
+        .attr("stroke-width", 2);
+
+      g.append("circle").attr("cx", x(earliest.year)).attr("cy", yDist(earliest.distance_km)).attr("r", 6).attr("fill","var(--pink)");
+      g.append("circle").attr("cx", x(latest.year)).attr("cy", yDist(latest.distance_km)).attr("r", 6).attr("fill","var(--pink)");
+    }
+  }
+
+  function renderRepeatWinners(selector, data, opts = {}) {
+    const grouped = Array.from(d3.rollup(data, v => ({
+      wins: v.length,
+      country: mode(v.map(d => d.country)),
+      avgAge: d3.mean(v, d => d.age_when_won)
+    }), d => d.rider), ([rider, values]) => ({rider, ...values}))
+      .filter(d => opts.story ? d.wins > 1 : d.wins >= 1)
+      .sort((a,b) => d3.descending(a.wins,b.wins))
+      .slice(0, opts.story ? 8 : 10);
+
+    const margin = {top: 18, right: 20, bottom: 36, left: 130};
+    const {svg, innerW, innerH} = responsiveSvg(selector, 350, margin);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    if (!grouped.length) return noData(g, innerW, innerH);
+
+    const x = d3.scaleLinear().domain([0,d3.max(grouped,d=>d.wins)]).nice().range([0,innerW]);
+    const y = d3.scaleBand().domain(grouped.map(d=>d.rider)).range([0,innerH]).padding(.22);
+
+    g.append("g").attr("class","grid").call(d3.axisTop(x).tickSize(-innerH).tickFormat(""));
+    g.append("g").attr("class","axis").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(5));
+    g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+    g.selectAll("rect").data(grouped).enter().append("rect")
+      .attr("y", d => y(d.rider))
+      .attr("width", d => x(d.wins))
+      .attr("height", y.bandwidth())
+      .attr("fill", (d,i) => i === 0 ? "var(--yellow)" : "var(--blue)")
+      .attr("rx", 7)
+      .style("cursor", opts.clickable ? "pointer" : "default")
+      .on("mousemove", (event,d) => showTip(event, `<b>${d.rider}</b><br>Wins: ${d.wins}<br>Country: ${d.country || "N/A"}<br>Avg age when winning: ${d.avgAge ? pct(d.avgAge) : "N/A"}`))
+      .on("mouseleave", hideTip)
+      .on("click", (event,d) => {
+        if (!opts.clickable) return;
+        d3.select("#riderFilter").property("value", d.rider);
+        updateDashboard();
+      });
+
+    g.selectAll(".bar-label").data(grouped).enter().append("text")
+      .attr("class","bar-label")
+      .attr("x", d => x(d.wins) + 6)
+      .attr("y", d => y(d.rider) + y.bandwidth()/2 + 4)
+      .attr("font-size", 12)
+      .attr("fill", "var(--muted)")
+      .text(d => d.wins);
+
+    if (opts.story && grouped.length) {
+      g.append("rect").attr("class","annotation").attr("x", innerW - 200).attr("y", 12).attr("width", 178).attr("height", 50).attr("rx", 10);
+      g.append("text").attr("class","annotation-text").attr("x", innerW - 188).attr("y", 33).text("Yellow highlights the")
+        .append("tspan").attr("x", innerW - 188).attr("dy", 16).text("top repeat winner.");
+    }
+  }
+
+  function renderStageDecade(selector, data) {
+    const decades = Array.from(new Set(data.map(d=>d.decade))).sort(d3.ascending);
+    const keys = ["Flat","Mountain","Hilly","Time Trial","Other"];
+    const nested = decades.map(decade => {
+      const row = {decade};
+      keys.forEach(k => row[k] = data.filter(d => d.decade === decade && d.stage_type_group === k).length);
+      return row;
+    });
+
+    const margin = {top: 20, right: 25, bottom: 58, left: 55};
+    const {svg, innerW, innerH, height} = responsiveSvg(selector, 390, margin);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    if (!nested.length) return noData(g, innerW, innerH);
+
+    const stack = d3.stack().keys(keys)(nested);
+    const x = d3.scaleBand().domain(decades).range([0,innerW]).padding(.2);
+    const y = d3.scaleLinear().domain([0, d3.max(nested, d => keys.reduce((sum,k)=>sum+d[k],0))]).nice().range([innerH,0]);
+
+    g.append("g").attr("class","grid").call(d3.axisLeft(y).tickSize(-innerW).tickFormat(""));
+    g.append("g").attr("class","axis").attr("transform", `translate(0,${innerH})`)
+      .call(d3.axisBottom(x).tickFormat(d => `${d}s`))
+      .selectAll("text").attr("transform","rotate(-35)").style("text-anchor","end");
+    g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+    g.selectAll("g.stack").data(stack).enter().append("g")
+      .attr("class","stack")
+      .attr("fill", d => colors[d.key])
+      .selectAll("rect")
+      .data(d => d.map(v => ({...v, key: d.key})))
+      .enter().append("rect")
+      .attr("x", d => x(d.data.decade))
+      .attr("y", d => y(d[1]))
+      .attr("height", d => y(d[0]) - y(d[1]))
+      .attr("width", x.bandwidth())
+      .on("mousemove", (event,d) => showTip(event, `<b>${d.data.decade}s</b><br>${d.key}: ${d.data[d.key]} stages`))
+      .on("mouseleave", hideTip);
+
+    const legend = svg.append("g").attr("transform", `translate(${margin.left},${height - 16})`);
+    keys.forEach((k,i) => {
+      const item = legend.append("g").attr("transform", `translate(${i*98},0)`);
+      item.append("rect").attr("width",12).attr("height",12).attr("rx",2).attr("fill",colors[k]);
+      item.append("text").attr("x",18).attr("y",11).attr("font-size",12).attr("fill","var(--muted)").text(k);
+    });
+  }
+
+  function renderAgeScatter(selector, data) {
+    const grouped = Array.from(d3.rollup(data, v => ({
+      wins: v.length,
+      avgAge: d3.mean(v, d => d.age_when_won),
+      country: mode(v.map(d => d.country))
+    }), d => d.rider), ([rider, values]) => ({rider, ...values}))
+      .filter(d => d.avgAge && d.wins);
+
+    const margin = {top: 18, right: 20, bottom: 50, left: 55};
+    const {svg, innerW, innerH} = responsiveSvg(selector, 350, margin);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    if (!grouped.length) return noData(g, innerW, innerH);
+
+    const x = d3.scaleLinear().domain(d3.extent(grouped,d=>d.avgAge)).nice().range([0,innerW]);
+    const y = d3.scaleLinear().domain([0,d3.max(grouped,d=>d.wins)]).nice().range([innerH,0]);
+
+    g.append("g").attr("class","grid").call(d3.axisLeft(y).tickSize(-innerW).tickFormat(""));
+    g.append("g").attr("class","axis").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x));
+    g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+    svg.append("text").attr("x", margin.left + innerW/2).attr("y", 340).attr("text-anchor","middle").attr("font-size",12).attr("fill","var(--muted)").text("Average age when winning");
+    svg.append("text").attr("transform","rotate(-90)").attr("x", -185).attr("y", 15).attr("text-anchor","middle").attr("font-size",12).attr("fill","var(--muted)").text("Number of wins");
+
+    g.selectAll("circle").data(grouped).enter().append("circle")
+      .attr("cx", d => x(d.avgAge))
+      .attr("cy", d => y(d.wins))
+      .attr("r", d => 4 + d.wins)
+      .attr("fill", "var(--pink)")
+      .attr("opacity", .75)
+      .on("mousemove", (event,d) => showTip(event, `<b>${d.rider}</b><br>Wins: ${d.wins}<br>Country: ${d.country}<br>Avg winning age: ${pct(d.avgAge)}`))
+      .on("mouseleave", hideTip);
+  }
+
+  function renderStageImpact(selector, data) {
+    const margin = {top: 18, right: 110, bottom: 55, left: 65};
+    const {svg, innerW, innerH, width} = responsiveSvg(selector, 420, margin);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    if (!data.length) return noData(g, innerW, innerH);
+
+    const x = d3.scaleLinear().domain(d3.extent(data,d=>d.stages_count)).nice().range([0,innerW]);
+    const y = d3.scaleLinear().domain([0, d3.max(data,d=>d.completion_pct)]).nice().range([innerH,0]);
+    const r = d3.scaleSqrt().domain(d3.extent(data,d=>d.starters)).range([4,14]);
+    const decadeColor = d3.scaleSequential(d3.extent(data,d=>d.decade), d3.interpolateBlues);
+
+    g.append("g").attr("class","grid").call(d3.axisLeft(y).tickSize(-innerW).tickFormat(""));
+    g.append("g").attr("class","axis").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(8));
+    g.append("g").attr("class","axis").call(d3.axisLeft(y).tickFormat(d => d + "%"));
+
+    svg.append("text").attr("x", margin.left + innerW/2).attr("y", 402).attr("text-anchor","middle").attr("font-size",12).attr("fill","var(--muted)").text("Number of stages");
+    svg.append("text").attr("transform","rotate(-90)").attr("x", -210).attr("y", 17).attr("text-anchor","middle").attr("font-size",12).attr("fill","var(--muted)").text("Finish rate");
+
+    g.selectAll("circle").data(data).enter().append("circle")
+      .attr("cx", d => x(d.stages_count))
+      .attr("cy", d => y(d.completion_pct))
+      .attr("r", d => r(d.starters))
+      .attr("fill", d => decadeColor(d.decade))
+      .attr("stroke", "white")
+      .attr("stroke-width", 1.2)
+      .attr("opacity", .82)
+      .on("mousemove", (event,d) => showTip(event, `<b>${d.year}</b><br>Stages: ${d.stages_count}<br>Starters: ${fmt(d.starters)}<br>Finishers: ${fmt(d.finishers)}<br>Finish rate: ${pct(d.completion_pct)}%`))
+      .on("mouseleave", hideTip);
+
+    const legend = svg.append("g").attr("transform", `translate(${width - 96},${margin.top + 10})`);
+    legend.append("text").attr("font-weight",800).attr("font-size",12).text("Decade");
+    const decs = Array.from(new Set(data.map(d=>d.decade))).sort(d3.ascending).filter((d,i,a)=> i===0 || i===a.length-1 || i%3===0).slice(0,6);
+    decs.forEach((d,i) => {
+      const item = legend.append("g").attr("transform", `translate(0,${20+i*22})`);
+      item.append("circle").attr("r",6).attr("fill",decadeColor(d));
+      item.append("text").attr("x",14).attr("y",4).attr("font-size",12).attr("fill","var(--muted)").text(`${d}s`);
+    });
+  }
+
+  function renderCountryBars(selector, data) {
+    const grouped = Array.from(d3.rollup(data, v => v.length, d => d.country), ([country, wins]) => ({country, wins}))
+      .sort((a,b) => d3.descending(a.wins,b.wins))
+      .slice(0, 12);
+    const margin = {top: 18, right: 30, bottom: 38, left: 110};
+    const {svg, innerW, innerH} = responsiveSvg(selector, 400, margin);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    if (!grouped.length) return noData(g, innerW, innerH);
+
+    const x = d3.scaleLinear().domain([0,d3.max(grouped,d=>d.wins)]).nice().range([0,innerW]);
+    const y = d3.scaleBand().domain(grouped.map(d=>d.country)).range([0,innerH]).padding(.22);
+
+    g.append("g").attr("class","grid").call(d3.axisTop(x).tickSize(-innerH).tickFormat(""));
+    g.append("g").attr("class","axis").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x));
+    g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+    g.selectAll("rect").data(grouped).enter().append("rect")
+      .attr("y", d => y(d.country))
+      .attr("width", d => x(d.wins))
+      .attr("height", y.bandwidth())
+      .attr("rx", 7)
+      .attr("fill", (d,i)=> i===0 ? "var(--yellow)" : "var(--blue)")
+      .style("cursor", "pointer")
+      .on("mousemove", (event,d) => showTip(event, `<b>${d.country}</b><br>Total wins: ${d.wins}`))
+      .on("mouseleave", hideTip)
+      .on("click", (event,d) => {
+        d3.select("#countryFilter").property("value", d.country);
+        updateDashboard();
+      });
+
+    g.selectAll(".country-label").data(grouped).enter().append("text")
+      .attr("x", d => x(d.wins) + 6)
+      .attr("y", d => y(d.country) + y.bandwidth()/2 + 4)
+      .attr("font-size", 12)
+      .attr("fill", "var(--muted)")
+      .text(d => d.wins);
+  }
+
+  function noData(g, w, h) {
+    g.append("text")
+      .attr("x", w/2)
+      .attr("y", h/2)
+      .attr("text-anchor","middle")
+      .attr("fill","var(--muted)")
+      .text("No data for the selected filters.");
+  }
+
+  function mode(arr) {
+    const counts = d3.rollup(arr.filter(Boolean), v => v.length, d => d);
+    let best = null, bestCount = -1;
+    for (const [k,v] of counts) if (v > bestCount) { best = k; bestCount = v; }
+    return best;
+  }
+
+  function debounce(fn, delay) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+}).catch(err => {
+  console.error(err);
+  d3.select("body").insert("div", ":first-child")
+    .style("background", "#fee2e2")
+    .style("padding", "16px")
+    .style("color", "#991b1b")
+    .text("There was an error loading the CSV files. Make sure the cleaned CSV files are in the same folder as index.html.");
+});
+</script>
+</body>
+</html>
