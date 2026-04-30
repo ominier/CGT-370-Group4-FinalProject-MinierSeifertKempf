@@ -690,7 +690,7 @@ Promise.all([
     const first = tours[0], last = tours[tours.length - 1];
     const distChange = ((last.distance_km - first.distance_km) / first.distance_km) * 100;
     d3.select("#takeaway-distance").text(
-      `The race moved from ${km(first.distance_km)} km in ${first.year} to ${km(last.distance_km)} km in ${last.year}, a ${Math.abs(distChange).toFixed(0)}% ${distChange < 0 ? "decrease" : "increase"} in total distance.`
+      `The Tour reached its longest distances in the early-to-mid 1900s before gradually shortening in the modern era.`
     );
 
     const repeat = d3.rollups(winners, v => v.length, d => d.rider).filter(d => d[1] > 1).sort((a,b) => d3.descending(a[1], b[1]));
